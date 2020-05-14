@@ -4,9 +4,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  KeyboardAvoidingView,
   StyleSheet,
-  Dimensions,
 } from 'react-native';
 
 export default ({ getReference }) => {
@@ -17,42 +15,26 @@ export default ({ getReference }) => {
     <View style={styles.active}>
       <TextInput
         ref={ref => getReference(ref)}
+        style={styles.textInputActive}
         placeholder='Type here'
         onChangeText={setText}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
-        style={{
-          flex: 0.91,
-          fontFamily: 'poppins_semibold',
-          fontSize: 14,
-          color: '#2196f399',
-          marginLeft: 16,
-        }}
       />
-      <TouchableOpacity>
-        <Text
-          style={{
-            fontFamily: 'poppins_light',
-            fontSize: 16,
-            color: '#2196f3',
-          }}
-        >
-          Search
-        </Text>
-      </TouchableOpacity>
+      <View style={styles.buttonView}>
+        <View style={styles.hairLine} />
+        <TouchableOpacity>
+          <Text style={styles.button}>Search</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   ) : (
     <View style={styles.inactive}>
       <TextInput
+        style={styles.textInputInactive}
         placeholder='Type here'
         onChangeText={setText}
         onFocus={() => setFocused(true)}
-        style={{
-          fontFamily: 'poppins_semibold',
-          fontSize: 14,
-          color: '#2196f399',
-          marginLeft: 16,
-        }}
       />
     </View>
   );
@@ -60,31 +42,52 @@ export default ({ getReference }) => {
 
 const styles = StyleSheet.create({
   inactive: {
+    marginLeft: 20,
+    marginRight: 20,
+    marginBottom: 25,
+    paddingLeft: 16,
+    paddingRight: 16,
     backgroundColor: '#ffffff',
-    height: 46,
-    // marginTop: -71,
     borderRadius: 25,
-    marginTop: Dimensions.get('window').height - 170,
-    // position: 'absolute',
-    // bottom: 25,
-    // left: 20,
-    // right: 20,
-    elevation: 3, // the only option for shadows in android
+    elevation: 5,
   },
   active: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
-    height: 46,
+    marginLeft: 20,
+    marginRight: 20,
+    marginBottom: 25,
+    paddingLeft: 16,
     paddingRight: 24,
-    // paddingLeft: 16,
+    backgroundColor: '#ffffff',
     borderRadius: 25,
-    elevation: 3,
-    marginTop: Dimensions.get('window').height - 170,
-    // position: 'absolute',
-    // bottom: 25,
-    // left: 20,
-    // right: 20,
+    elevation: 5,
+  },
+  textInputInactive: {
+    fontFamily: 'poppins_semibold',
+    color: '#2196f399',
+  },
+  textInputActive: {
+    flex: 0.94,
+    fontFamily: 'poppins_semibold',
+    color: '#2196f399',
+  },
+  buttonView: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
+  hairLine: {
+    width: StyleSheet.hairlineWidth,
+    height: 30,
+    backgroundColor: '#707070',
+  },
+  button: {
+    color: '#2196f3',
+    fontFamily: 'poppins_light',
+    fontSize: 16,
+    marginLeft: 16,
   },
 });

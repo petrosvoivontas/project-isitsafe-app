@@ -1,5 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { View, PermissionsAndroid, StyleSheet, Dimensions } from 'react-native';
+import {
+  View,
+  PermissionsAndroid,
+  Image,
+  StyleSheet,
+  Dimensions,
+} from 'react-native';
 import { connect } from 'react-redux';
 import MapView, { Marker } from 'react-native-maps';
 import Geolocation from '@react-native-community/geolocation';
@@ -9,13 +15,18 @@ import Header from './Header';
 import mapStyle from '../map.json';
 
 const Home = ({ places }) => {
-  let textInput, isActive, map;
-  const [region, setRegion] = useState({
+  let textInput,
+    inputActive = false,
+    map;
+
+  const [initialRegion, setInitialRegion] = useState({
     latitude: 37.78825,
     longitude: -122.4324,
-    latitudeDelta: 1,
-    longitudeDelta: 1,
+    latitudeDelta: 0.005,
+    longitudeDelta: 0.005,
   });
+
+  const [region, setRegion] = useState(initialRegion);
 
   const getLocation = () => {
     return new Promise((resolve, reject) => {
@@ -25,12 +36,12 @@ const Home = ({ places }) => {
         if (status) {
           Geolocation.getCurrentPosition(geo_success => {
             console.log('Success', geo_success);
-            setRegion({
-              latitude: geo_success.coords.latitude,
-              longitude: geo_success.coords.longitude,
-              latitudeDelta: 0.005,
-              longitudeDelta: 0.005,
-            });
+            // setRegion({
+            //   latitude: geo_success.coords.latitude,
+            //   longitude: geo_success.coords.longitude,
+            //   latitudeDelta: 0.005,
+            //   longitudeDelta: 0.005,
+            // });
 
             resolve(geo_success.coords);
           });
@@ -41,12 +52,12 @@ const Home = ({ places }) => {
             if (status) {
               Geolocation.getCurrentPosition(geo_success => {
                 console.log('Success', geo_success);
-                setRegion({
-                  latitude: geo_success.coords.latitude,
-                  longitude: geo_success.coords.longitude,
-                  latitudeDelta: 0.005,
-                  longitudeDelta: 0.005,
-                });
+                // setRegion({
+                //   latitude: geo_success.coords.latitude,
+                //   longitude: geo_success.coords.longitude,
+                //   latitudeDelta: 0.005,
+                //   longitudeDelta: 0.005,
+                // });
               });
 
               resolve(geo_success.coords);
@@ -58,12 +69,12 @@ const Home = ({ places }) => {
   };
 
   const searchPlace = (latitude, longitude) => {
-    return fetch(
-      `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${latitude},${longitude}&radius=1500&type=restaurant&keyword=cruise&key=AIzaSyB8cy3I1XRvZNU9z1uSQcqk4VQNd8rOpr4`,
-      {
-        method: 'GET',
-      },
-    );
+    // return fetch(
+    //   `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${latitude},${longitude}&radius=1500&type=restaurant&keyword=cruise&key=AIzaSyB8cy3I1XRvZNU9z1uSQcqk4VQNd8rOpr4`,
+    //   {
+    //     method: 'GET',
+    //   },
+    // );
   };
 
   useEffect(() => {
@@ -84,26 +95,29 @@ const Home = ({ places }) => {
       //   );
     });
 
+    // map.animateCamera({ center: { ...places[0].location } });
+
     return () => {};
   }, [map]);
 
   return (
     <View style={styles.home}>
       <MapView
-        ref={node => (map = node)}
-        style={{ height: '100%' }}
+        style={styles.map}
+        ref={ref => (map = ref)}
         onTouchStart={() => {
-          if (isActive) {
+          if (inputActive) {
             textInput.blur();
-            isActive = false;
+            inputActive = false;
           }
         }}
         customMapStyle={mapStyle}
+        initialRegion={initialRegion}
         region={region}
-        onMapReady={() => {
-          map.animateCamera({ center: { ...places[0].location } });
-        }}
-        onRegionChangeComplete={region => setRegion(region)}
+        onRegionChangeComplete={_region => setRegion(_region)}
+        onMapReady={() =>
+          map.animateCamera({ center: { ...places[0].location } })
+        }
       >
         {places.map(place => {
           return (
@@ -115,26 +129,12 @@ const Home = ({ places }) => {
           );
         })}
       </MapView>
-      <View
-        style={{
-          flex: 1,
-          justifyContent: 'space-between',
-          position: 'absolute',
-          bottom: 30,
-          left: 20,
-          right: 20,
-          // paddingTop: 20,
-          // paddingBottom: 100,
-          // height: Dimensions.get('screen').height,
-        }}
-      >
+      <View style={styles.overlay}>
         <Header />
         <SearchBar
           getReference={ref => {
-            if (ref) {
-              textInput = ref;
-              isActive = true;
-            }
+            textInput = ref;
+            inputActive = true;
           }}
         />
       </View>
@@ -144,8 +144,14 @@ const Home = ({ places }) => {
 
 const styles = StyleSheet.create({
   home: {
-    flex: 1,
-    justifyContent: 'flex-start',
+    ...StyleSheet.absoluteFillObject,
+  },
+  map: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'space-between',
   },
 });
 
