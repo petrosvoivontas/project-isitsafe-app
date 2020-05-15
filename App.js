@@ -1,4 +1,5 @@
 import React from 'react';
+import { YellowBox } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createStore } from 'redux';
@@ -11,6 +12,8 @@ import RatingScreen from './components/RatingScreen';
 
 import reducer from './redux/reducers';
 import initialState from './redux/reducers/initialState.json';
+
+console.disableYellowBox = true;
 
 const Stack = createStackNavigator();
 
