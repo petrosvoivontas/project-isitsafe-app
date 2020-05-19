@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,56 +9,146 @@ import {
 } from 'react-native';
 import Slider from '@react-native-community/slider';
 
-const rules = [
-  { name: 'Οι εργαζόμενοι φοράνε γάντια', value: 25 },
-  { name: 'Οι εργαζόμενοι φοράνε μάσκα', value: 50 },
-  { name: 'Υπάρχει απόσταση 1 μέτρου μεταξύ τω τραπεζιών', value: 45 },
-];
+// const rules = [
+//   { name: 'Οι εργαζόμενοι φοράνε γάντια', value: 25 },
+//   { name: 'Οι εργαζόμενοι φοράνε μάσκα', value: 50 },
+//   { name: 'Υπάρχει απόσταση 1 μέτρου μεταξύ τω τραπεζιών', value: 45 },
+// ];
 
-const ListItem = ({ name, defaultValue }) => {
-  const [value, setValue] = useState(defaultValue);
-
-  const changeValueBasedOnInput = input => {
-    if (typeof input === 'number') {
-      if (input > 100) setValue(100);
-      else if (input < 0) setValue(0);
-      else setValue(input);
-    }
-  };
+const OptionBox = ({ value, active = false, onIsActiveChange }) => {
+  const [isActive, setIsActive] = useState(active);
 
   return (
-    <View style={styles.listItem}>
-      <Text style={styles.itemText}>{name}</Text>
-      <View
-        style={{
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-          alignItems: 'center',
+    <View>
+      <TouchableOpacity
+        onPress={() => {
+          setIsActive(!isActive);
+          onIsActiveChange(isActive);
         }}
       >
-        <Slider
-          style={styles.slider}
-          minimumValue={0}
-          maximumValue={100}
-          value={value}
-          onValueChange={_value => setValue(_value)}
-          step={1}
-          thumbTintColor='#2196f3'
-          minimumTrackTintColor='#2196f3'
-          maximumTrackTintColor='#2196f3'
-        />
-        <TextInput
-          style={styles.itemInput}
-          value={value.toString()}
-          onChangeText={changeValueBasedOnInput}
-        />
-      </View>
+        <Text>{value}</Text>
+      </TouchableOpacity>
     </View>
   );
 };
 
-export default () => {
-  return (
+const ListItem = ({ name, defaultValue, maxValue }) => {
+  const [value, setValue] = useState(Math.round(defaultValue / 25));
+  console.log(maxValue);
+
+  const twoOptions = (
+    <View style={styles.listItem}>
+      <Text>{name}</Text>
+      <View style={styles.listItemOptionsView}>
+        <TouchableOpacity
+          style={styles.listItemOption}
+          onPress={() => setValue(1)}
+        >
+          <Text>Yes</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.listItemOption}
+          onPress={() => setValue(0)}
+        >
+          <Text>No</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
+  const fiveOptions = (
+    <View style={styles.listItem}>
+      <Text>{name}</Text>
+      <View style={styles.listItemOptionsView}>
+        <TouchableOpacity
+          style={styles.listItemOption}
+          onPress={() => setValue(0)}
+        >
+          <Text>0</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.listItemOption}
+          onPress={() => setValue(1)}
+        >
+          <Text>1</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.listItemOption}
+          onPress={() => setValue(2)}
+        >
+          <Text>2</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.listItemOption}
+          onPress={() => setValue(3)}
+        >
+          <Text>3</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.listItemOption}
+          onPress={() => setValue(4)}
+        >
+          <Text>4</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
+  return maxValue === 1 ? twoOptions : fiveOptions;
+};
+
+export default ({
+  navigation,
+  route: {
+    params: { placeId, placeType },
+  },
+}) => {
+  const [rules, setRules] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [ratingSchema, setRatingSchema] = useState();
+
+  const getPlaceRating = () => {
+    fetch(
+      `https://europe-west3-isitsafe-276523.cloudfunctions.net/getPlaceRating?placeId=${placeId}&placeType=${placeType}`,
+    )
+      .then(res => {
+        if (res.ok) return res.json();
+      })
+      .then(
+        jsonResponse => {
+          console.log('jsonResponse: ', jsonResponse);
+          const placeRating = jsonResponse.placeRating;
+          const ratingSchema = jsonResponse.ratingSchema;
+
+          if (jsonResponse.status === 'ok') {
+            let rules = [];
+
+            for (let rule in placeRating.rules) {
+              rules.push({
+                name: rule,
+                value: placeRating.rules[rule],
+                maxValue: ratingSchema[rule],
+              });
+            }
+
+            setRules(rules);
+            setRatingSchema(jsonResponse.ratingSchema);
+            setLoading(false);
+          } else navigation.goBack();
+        },
+        err => console.log('Another error: ', err),
+      )
+      .catch(err => {
+        console.log('Network error: ', err);
+        navigation.goBack();
+      });
+  };
+
+  useEffect(() => {
+    getPlaceRating();
+  }, []);
+
+  return loading ? null : (
     <View style={styles.ratingScreen}>
       <Text style={styles.headerText}>
         {'Help us determine\nthe safety of this place'}
@@ -66,9 +156,7 @@ export default () => {
       <FlatList
         style={styles.flatList}
         data={rules}
-        renderItem={({ item }) => (
-          <ListItem name={item.name} defaultValue={item.value} />
-        )}
+        renderItem={({ item }) => <ListItem {...item} />}
         keyExtractor={(_, i) => i.toString()}
       />
       <TouchableOpacity style={styles.button} activeOpacity={0.4}>
@@ -94,8 +182,9 @@ const styles = StyleSheet.create({
     marginLeft: 16,
   },
   flatList: {
+    alignSelf: 'stretch',
     backgroundColor: '#fff',
-    marginHorizontal: 16,
+    marginHorizontal: 32,
     marginTop: 16,
     marginBottom: 16,
     borderRadius: 10,
@@ -103,24 +192,27 @@ const styles = StyleSheet.create({
   },
   listItem: {
     justifyContent: 'space-between',
-    alignItems: 'stretch',
+    alignItems: 'flex-start',
     marginTop: 16,
     paddingHorizontal: 16,
   },
-  slider: {
-    width: '80%',
+  listItemOptionsView: {
+    alignSelf: 'stretch',
+    flexDirection: 'row',
+    justifyContent: 'space-evenly',
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  listItemOption: {
+    borderColor: '#cbc9c9',
+    borderWidth: 1,
+    borderRadius: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
   },
   itemText: {
     fontFamily: 'poppins_regular',
     fontSize: 16,
-  },
-  itemInput: {
-    width: 40,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 4,
-    paddingVertical: 0,
-    textAlign: 'center',
   },
   button: {
     marginBottom: 20,

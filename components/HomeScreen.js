@@ -11,71 +11,69 @@ import { connect } from 'react-redux';
 import MapView, { Marker } from 'react-native-maps';
 import Geolocation from '@react-native-community/geolocation';
 import Carousel from 'react-native-snap-carousel';
+import auth from '@react-native-firebase/auth';
 
 import SearchBar from './SearchBar';
 import Header from './Header';
+import AlertBox from './AlertBox';
 import mapStyle from '../map.json';
 
-const Home = ({ navigation, places }) => {
+const Home = ({ navigation, initialRegion, places }) => {
   let textInput,
     inputActive = false,
     map,
     carousel,
     markers = [];
 
-  const [initialRegion, setInitialRegion] = useState({});
-
+  const [user, setUser] = useState();
   const [loading, setLoading] = useState(true);
 
-  const getLocation = () => {
-    return new Promise((resolve, reject) => {
-      PermissionsAndroid.check(
-        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-      ).then(status => {
-        if (status) {
-          Geolocation.getCurrentPosition(geo_success => {
-            console.log('Success', geo_success);
-
-            setInitialRegion({
-              latitude: geo_success.coords.latitude,
-              longitude: geo_success.coords.longitude,
-              latitudeDelta: 0.005,
-              longitudeDelta: 0.005,
-            });
-
-            resolve(geo_success.coords);
-          });
-        } else {
-          PermissionsAndroid.request(
-            PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-          ).then(status => {
-            if (status) {
-              Geolocation.getCurrentPosition(geo_success => {
-                console.log('Success', geo_success);
-                setInitialRegion({
-                  latitude: geo_success.coords.latitude,
-                  longitude: geo_success.coords.longitude,
-                  latitudeDelta: 0.005,
-                  longitudeDelta: 0.005,
-                });
-              });
-
-              resolve(geo_success.coords);
-            }
-          });
-        }
-      });
-    });
+  const onAuthStateChanged = user => {
+    if (user) setUser(user);
+    if (loading) setLoading(false);
   };
 
-  const renderCarouselItem = ({ item: { name, address } }) => {
+  const renderCarouselItem = ({
+    item: { name, address, placeId, placeType, phoneNumber, openingHours },
+  }) => {
     return (
       <View style={styles.carouselItem}>
         <View style={styles.carouselItemTextView}>
+          <Text
+            style={{
+              backgroundColor: '#cbc9c9',
+              borderRadius: 5,
+              paddingHorizontal: 5,
+              paddingVertical: 2,
+            }}
+          >
+            Sponsored
+          </Text>
           <Text style={styles.carouselItemName}>{name}</Text>
           <Text style={styles.carouselItemAddress}>{address}</Text>
+          {openingHours ? (
+            openingHours.open_now ? (
+              <Text style={styles.carouselItemSupplementaryText}>Open</Text>
+            ) : (
+              <Text style={styles.carouselItemSupplementaryText}>Closed</Text>
+            )
+          ) : null}
+          <Text style={styles.carouselItemSupplementaryText}>
+            {phoneNumber}
+          </Text>
         </View>
-        <TouchableOpacity activeOpacity={0.4}>
+        <TouchableOpacity
+          activeOpacity={0.4}
+          onPress={() => {
+            if (user)
+              navigation.navigate('RatingScreen', { placeId, placeType });
+            else
+              navigation.navigate('AlertBox', {
+                title: 'You are not signed in',
+                text: 'You need to sing in order to rate this place',
+              });
+          }}
+        >
           <Text style={styles.carouselItemButtonText}>Is It Safe?</Text>
         </TouchableOpacity>
       </View>
@@ -83,11 +81,9 @@ const Home = ({ navigation, places }) => {
   };
 
   useEffect(() => {
-    getLocation().then(res => {
-      if (initialRegion) setLoading(false);
-    });
+    const subscriber = auth().onAuthStateChanged(onAuthStateChanged);
 
-    return () => {};
+    return subscriber;
   }, []);
 
   return loading ? null : (
@@ -104,17 +100,26 @@ const Home = ({ navigation, places }) => {
         customMapStyle={mapStyle}
         initialRegion={initialRegion}
         onMapReady={() => {
-          map.animateCamera({ center: { ...places[0].location } });
+          map.animateCamera({
+            center: {
+              latitude: places[0].coords.lat,
+              longitude: places[0].coords.lng,
+            },
+          });
           markers[0].showCallout();
           carousel.snapToItem(0);
         }}
+        toolbarEnabled={false}
       >
         {places.map((place, i) => {
           return (
             <Marker
               ref={ref => markers.push(ref)}
               key={place.placeId}
-              coordinate={place.location}
+              coordinate={{
+                latitude: place.coords.lat,
+                longitude: place.coords.lng,
+              }}
               title={place.name}
               onPress={() => carousel.snapToItem(i)}
             />
@@ -139,9 +144,17 @@ const Home = ({ navigation, places }) => {
           sliderWidth={Dimensions.get('window').width}
           itemWidth={300}
           containerCustomStyle={styles.carousel}
+          contentContainerCustomStyle={{
+            alignItems: 'flex-end',
+          }}
           enableMomentum={true}
           onSnapToItem={index => {
-            map.animateCamera({ center: { ...places[index].location } });
+            map.animateCamera({
+              center: {
+                latitude: places[index].coords.lat,
+                longitude: places[index].coords.lng,
+              },
+            });
             markers[index].showCallout();
           }}
         />
@@ -174,13 +187,21 @@ const styles = StyleSheet.create({
     paddingTop: 8,
   },
   carouselItemTextView: {
+    alignSelf: 'flex-start',
     marginLeft: 8,
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 16,
   },
   carouselItemName: {
-    fontSize: 16,
+    fontSize: 20,
     fontFamily: 'poppins_semibold',
+  },
+  carouselItemAddress: {
+    fontFamily: 'poppins_regular',
+  },
+  carouselItemSupplementaryText: {
+    color: '#cbc9c9',
+    fontSize: 12,
   },
   carouselItemButtonText: {
     fontFamily: 'poppins_semibold',
@@ -189,22 +210,8 @@ const styles = StyleSheet.create({
   },
 });
 
-// TODO: state must be immutable
-const mapStateToProps = state => {
-  let places = state.places;
-
-  places = places.map(place => ({
-    location: {
-      latitude: place.geometry.location.lat,
-      longitude: place.geometry.location.lng,
-    },
-    name: place.name,
-    placeId: place.place_id,
-    // open: place.opening_hours.open_now, // TODO:
-    address: place.vicinity,
-  }));
-
-  return { places };
-};
+const mapStateToProps = state => ({
+  places: state.places,
+});
 
 export default connect(mapStateToProps)(Home);
